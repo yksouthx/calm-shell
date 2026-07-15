@@ -1,0 +1,46 @@
+# Maintainer: yksouthx <see https://github.com/yksouthx>
+pkgname=calm-shell
+pkgver=0.1.0
+pkgrel=2
+pkgdesc="A calm, pastel, Arch-native interactive shell for EndeavourOS"
+arch=('x86_64' 'aarch64')
+url="https://github.com/yksouthx/calm-shell"
+license=('MIT')
+depends=('gcc-libs')
+# calm-shell runs fine without either — `git status` is skipped silently
+# (see src/git.rs) and $EDITOR falls back to nano (see
+# src/commands/config_cmd.rs) — but both are needed for two headline
+# features (prompt git integration, `calm config`) to actually do
+# anything, so they're worth surfacing to installers rather than
+# something the shell quietly does without.
+optdepends=('git: prompt shows branch + clean/dirty status'
+            'nano: fallback editor for `calm config` if $EDITOR is unset')
+makedepends=('cargo')
+provides=('calm')
+conflicts=('calm-shell-git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/yksouthx/calm-shell/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+	cd "$pkgname-$pkgver"
+	cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+	cd "$pkgname-$pkgver"
+	export RUSTUP_TOOLCHAIN=stable
+	export CARGO_TARGET_DIR=target
+	cargo build --frozen --release
+}
+
+check() {
+	cd "$pkgname-$pkgver"
+	cargo test --frozen --release
+}
+
+package() {
+	cd "$pkgname-$pkgver"
+	install -Dm0755 "target/release/calm" "$pkgdir/usr/bin/calm"
+	install -Dm0644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+	install -Dm0644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
