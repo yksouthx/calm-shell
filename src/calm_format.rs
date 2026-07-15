@@ -5,7 +5,8 @@
 //! and triple-quoted strings let `functions.calm` hold real shell bodies
 //! without the parser needing to understand shell syntax.
 //!
-//! ```calm
+
+//!```calm
 //! # comment
 //! [shell]
 //! theme = "calm-lavender"

@@ -38,7 +38,7 @@ impl Theme {
     }
 
     pub fn load(name: &str) -> Result<Theme> {
-        let path = config::themes_dir()?.join(format!("{name}.json"));
+        let path = config::themes_dir()?.join(format!("{name}.calm"));
         let raw = fs::read_to_string(&path)
             .with_context(|| format!("reading theme file {}", path.display()))?;
         let file: ThemeFile = serde_json::from_str(&raw)
