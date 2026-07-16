@@ -15,7 +15,21 @@ pub fn launch() -> Result<()> {
 
     // config.calm drives whether the banner/greeting shows and lets the
     // prompt icon be overridden per-user without touching the theme file.
-    let cfg = calm_format::parse_file(&config::config_file()?).unwrap_or_default();
+    // A parse error anywhere in the include chain (config.calm or any
+    // topic file it includes) used to fall back to a blank, empty config
+    // with zero indication anything was wrong — every alias, function,
+    // and setting the user wrote would silently vanish, banner and all,
+    // with the shell looking perfectly normal. Loud beats silent here:
+    // the shell still starts (a broken config shouldn't mean no shell at
+    // all), but the user finds out immediately, not by wondering days
+    // later why `..` stopped working.
+    let cfg = match calm_format::parse_file(&config::config_file()?) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("calm: could not load config, starting with defaults instead: {e}");
+            calm_format::CalmDocument::default()
+        }
+    };
     let greeting = cfg.get_bool("shell", "greeting").unwrap_or(true);
     let icon_override = cfg.get_str("prompt", "icon").map(str::to_string);
     let icon: &str = icon_override.as_deref().unwrap_or_else(|| theme.icon());

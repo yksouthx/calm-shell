@@ -1,0 +1,27 @@
+# Example aliases.calm — a fuller set than the four defaults ship with.
+# Copy over ~/.config/calm-shell/aliases.calm to use as-is, or take
+# individual lines under [aliases] in your own file.
+
+[aliases]
+# git
+ll = "ls -la"
+gs = "git status"
+gc = "git commit"
+gp = "git push"
+gl = "git log --oneline --graph --decorate"
+gd = "git diff"
+gco = "git checkout"
+
+# safety nets — confirm before clobbering or deleting
+rm = "rm -i"
+mv = "mv -i"
+cp = "cp -i"
+
+# system
+update = "sudo pacman -Syu"
+ports = "ss -tulpn"
+please = "sudo"
+
+# docker
+dps = "docker ps"
+dc = "docker compose"

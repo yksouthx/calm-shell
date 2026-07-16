@@ -1,0 +1,34 @@
+# Example functions.calm — triple-quoted blocks hold raw shell bodies,
+# same as the default file's `mkcd`. Copy over
+# ~/.config/calm-shell/functions.calm, or add individual entries under
+# your own [functions] section. Each becomes `name() { ...body... }` in
+# the shell, so $1/$2/$@ work exactly like in any shell function.
+
+[functions]
+# Make a directory and cd into it in one step: `mkcd new-project`
+mkcd = """
+mkdir -p "$1" && cd "$1"
+"""
+
+# Commit with a message in one step: `gcm "fix: thing"`
+gcm = """
+git commit -m "$1"
+"""
+
+# Quick backup of a file: `backup notes.txt` -> notes.txt.bak
+backup = """
+cp -- "$1" "$1.bak"
+"""
+
+# Extract almost any archive without remembering the right flags:
+# `extract project.tar.gz`
+extract = """
+case "$1" in
+  *.tar.gz|*.tgz) tar xzf "$1" ;;
+  *.tar.bz2) tar xjf "$1" ;;
+  *.tar) tar xf "$1" ;;
+  *.zip) unzip "$1" ;;
+  *.gz) gunzip "$1" ;;
+  *) echo "extract: don't know how to extract $1" ;;
+esac
+"""

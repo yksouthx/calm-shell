@@ -223,7 +223,10 @@ mkdir -p "$1" && cd "$1"
 "##
 }
 
-fn default_lavender_theme() -> &'static str {
+/// `pub(crate)` (not just used within this module) so `theme_engine.rs`'s
+/// tests can validate the actual bundled theme instead of a second,
+/// hand-copied reference file that could silently drift out of sync.
+pub(crate) fn default_lavender_theme() -> &'static str {
     r##"{
   "name": "calm-lavender",
   "display_name": "Calm Lavender",

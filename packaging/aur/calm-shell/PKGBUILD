@@ -1,10 +1,10 @@
-# Maintainer: yksouthx <see https://github.com/yksouthx>
+# Maintainer: yksouthx <see https://github.com/s0uth09>
 pkgname=calm-shell
 pkgver=0.1.0
 pkgrel=2
 pkgdesc="A calm, pastel, Arch-native interactive shell for EndeavourOS"
 arch=('x86_64' 'aarch64')
-url="https://github.com/yksouthx/calm-shell"
+url="https://github.com/s0uth09/calm-shell"
 license=('MIT')
 depends=('gcc-libs')
 # calm-shell runs fine without either — `git status` is skipped silently
@@ -18,7 +18,7 @@ optdepends=('git: prompt shows branch + clean/dirty status'
 makedepends=('cargo')
 provides=('calm')
 conflicts=('calm-shell-git')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/yksouthx/calm-shell/archive/refs/tags/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/s0uth09/calm-shell/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 prepare() {

@@ -1,0 +1,24 @@
+# Example directory.calm — auto_cd plus a larger shortcut set than the
+# defaults ship with. Copy over ~/.config/calm-shell/directory.calm, or
+# take individual [directory.aliases] lines.
+
+[directory]
+# A bare directory name at the prompt (e.g. typing "Projects" alone) cds
+# into it instead of failing as "command not found".
+auto_cd = true
+# How many entries `pushd`/`popd`/`dirs` remember; oldest dropped first.
+dir_stack_size = 20
+
+[directory.aliases]
+".." = "cd .."
+"..." = "cd ../.."
+"...." = "cd ../../.."
+"-" = "cd -"
+# Shortcuts to specific places — these are plain aliases (exact-word
+# matches), unrelated to auto_cd, so they work even for paths that don't
+# exist yet or that you don't want to type in full. Point these at your
+# own directories.
+"~config" = "cd ~/.config/calm-shell"
+"~dl" = "cd ~/Downloads"
+"~docs" = "cd ~/Documents"
+"~dev" = "cd ~/Projects"

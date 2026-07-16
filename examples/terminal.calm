@@ -1,0 +1,16 @@
+# Example terminal.calm — turning on the error bell. Copy over
+# ~/.config/calm-shell/terminal.calm.
+
+[terminal]
+# Sets the terminal tab/window title to "calm — <cwd>" each prompt.
+set_title = true
+# Rings the terminal bell on calm's own errors (a bad cd/pushd/popd
+# target, or a command that couldn't be spawned at all) — not on every
+# command that merely exits nonzero, which would make this unbearably
+# noisy for normal grep/test-style commands that fail on purpose.
+# Off by default; flip to true here if you want the audible feedback.
+bell = true
+# Not wired yet — `calm doctor` checks $COLORTERM independently of this
+# flag; nothing currently degrades the palette for terminals without
+# truecolor support.
+truecolor = true

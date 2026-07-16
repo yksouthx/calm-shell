@@ -38,7 +38,7 @@ impl Theme {
     }
 
     pub fn load(name: &str) -> Result<Theme> {
-        let path = config::themes_dir()?.join(format!("{name}.calm"));
+        let path = config::themes_dir()?.join(format!("{name}.json"));
         let raw = fs::read_to_string(&path)
             .with_context(|| format!("reading theme file {}", path.display()))?;
         let file: ThemeFile = serde_json::from_str(&raw)
@@ -111,4 +111,77 @@ fn parse_hex(hex: &str) -> Option<(u8, u8, u8)> {
     let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
     let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
     Some((r, g, b))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `line_editor.rs`'s highlighter/hint/completion-menu colors look up
+    /// these exact literal key names in a theme's `colors` map directly
+    /// (not through the `prompt` section's semantic indirection the way
+    /// `border`/`path`/`git_clean`/`git_dirty`/`arrow` do) — so any
+    /// custom theme is missing real UI color if it doesn't define all
+    /// six, even though nothing here enforces that at load time (a
+    /// missing one just silently falls back to plain/uncolored text via
+    /// `paint`'s `None` branch). Listed once, here, so this constraint is
+    /// written down somewhere instead of only living as six scattered
+    /// string literals in `line_editor.rs`.
+    const REQUIRED_DIRECT_PALETTE_KEYS: &[&str] = &[
+        "calm_purple",
+        "cloud_gray",
+        "gentle_pink",
+        "soft_blue",
+        "soft_red",
+        "warm_yellow",
+    ];
+
+    #[test]
+    fn bundled_default_theme_has_all_required_keys_and_valid_hex() {
+        let file: ThemeFile = serde_json::from_str(config::default_lavender_theme()).unwrap();
+        for key in REQUIRED_DIRECT_PALETTE_KEYS {
+            assert!(
+                file.colors.contains_key(*key),
+                "calm-lavender.json is missing required color key `{key}`"
+            );
+        }
+        for (name, hex) in &file.colors {
+            assert!(parse_hex(hex).is_some(), "invalid hex for `{name}`: {hex}");
+        }
+    }
+
+    #[test]
+    fn example_custom_theme_parses_and_has_all_required_keys() {
+        let raw = include_str!("../examples/themes/calm-mint.json");
+        let file: ThemeFile = serde_json::from_str(raw)
+            .expect("examples/themes/calm-mint.json must be valid theme JSON");
+
+        for key in REQUIRED_DIRECT_PALETTE_KEYS {
+            assert!(
+                file.colors.contains_key(*key),
+                "examples/themes/calm-mint.json is missing required color key `{key}`"
+            );
+        }
+        for (name, hex) in &file.colors {
+            assert!(
+                parse_hex(hex).is_some(),
+                "examples/themes/calm-mint.json: invalid hex for `{name}`: {hex}"
+            );
+        }
+        // Every prompt.*_color must resolve to a key that's actually in
+        // `colors`, or that role silently renders as plain text.
+        let prompt_refs = [
+            &file.prompt.border_color,
+            &file.prompt.path_color,
+            &file.prompt.git_clean_color,
+            &file.prompt.git_dirty_color,
+            &file.prompt.arrow_color,
+        ];
+        for color_name in prompt_refs {
+            assert!(
+                file.colors.contains_key(color_name),
+                "examples/themes/calm-mint.json: prompt references undefined color `{color_name}`"
+            );
+        }
+    }
 }

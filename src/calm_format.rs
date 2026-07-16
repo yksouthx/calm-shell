@@ -5,8 +5,7 @@
 //! and triple-quoted strings let `functions.calm` hold real shell bodies
 //! without the parser needing to understand shell syntax.
 //!
-
-//!```calm
+//! ```calm
 //! # comment
 //! [shell]
 //! theme = "calm-lavender"
@@ -171,7 +170,18 @@ pub fn parse(input: &str) -> Result<CalmDocument> {
         let (key, value_part) = line
             .split_once('=')
             .with_context(|| format!("line {}: expected `key = value`, got: {line}", i + 1))?;
-        let key = key.trim().to_string();
+        // A key needs quotes when it isn't a valid bare identifier (e.g.
+        // `".."`, `"~dl"`, `"ctrl+r"` in directory/keyboard aliases) —
+        // strip them the same way a quoted *value* would be, or the key
+        // ends up stored as the literal 4+ character string `"..\"`
+        // (quotes included) and every lookup against it silently never
+        // matches, which is exactly as broken as it sounds and exactly
+        // as quiet: no parse error, just an alias that never fires.
+        let key = key.trim();
+        let key = match key.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+            Some(inner) => unescape(inner),
+            None => key.to_string(),
+        };
         let value_part = value_part.trim();
 
         if value_part.starts_with("\"\"\"") {
@@ -468,5 +478,55 @@ mod tests {
     fn split_top_level_commas_respects_nesting_and_quotes() {
         let items = split_top_level_commas(r#""a,b", [1, 2], 3"#);
         assert_eq!(items, vec![r#""a,b""#, " [1, 2]", " 3"]);
+    }
+
+    #[test]
+    fn quoted_keys_have_their_quotes_stripped() {
+        // Regression test: keys that need quoting because they aren't
+        // valid bare identifiers (directory/keyboard aliases like ".."
+        // or "ctrl+r") used to keep their quote characters as part of
+        // the stored key — so `cfg.get("directory.aliases", "..")`
+        // would never match a key literally stored as `"..\"`. Every
+        // quoted alias in the shipped defaults was silently dead until
+        // this was fixed.
+        let doc = parse("[directory.aliases]\n\"..\" = \"cd ..\"\n\"~dl\" = \"cd ~/Downloads\"\n").unwrap();
+        assert_eq!(doc.get_str("directory.aliases", ".."), Some("cd .."));
+        assert_eq!(doc.get_str("directory.aliases", "~dl"), Some("cd ~/Downloads"));
+        // Confirms the bug's actual symptom: the quoted form must NOT be
+        // a valid key any more, or this would be testing nothing.
+        assert_eq!(doc.get_str("directory.aliases", "\"..\""), None);
+    }
+
+    #[test]
+    fn unquoted_keys_are_unaffected() {
+        let doc = parse("[aliases]\nll = \"ls -la\"\n").unwrap();
+        assert_eq!(doc.get_str("aliases", "ll"), Some("ls -la"));
+    }
+
+    /// Every file under `examples/*.calm` is meant to be copy-pasteable
+    /// straight into `~/.config/calm-shell/`, so it has to parse cleanly
+    /// with the real parser — not just look plausible. This test is the
+    /// thing that actually guarantees that, rather than trusting it by
+    /// eye; it fails the build if an example ever goes stale.
+    #[test]
+    fn shipped_examples_all_parse_cleanly() {
+        let examples_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("examples");
+        let mut checked = 0;
+        for entry in fs::read_dir(&examples_dir).expect("examples/ directory must exist") {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("calm") {
+                continue;
+            }
+            let contents = fs::read_to_string(&path).unwrap();
+            let result = parse(&contents);
+            assert!(
+                result.is_ok(),
+                "examples/{} failed to parse: {:?}",
+                path.file_name().unwrap().to_string_lossy(),
+                result.err()
+            );
+            checked += 1;
+        }
+        assert!(checked > 0, "no examples/*.calm files were found to check");
     }
 }

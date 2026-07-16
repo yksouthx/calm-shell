@@ -29,7 +29,7 @@ yay -S calm-shell-git    # build from the latest master
 ### Manual (any Linux with Rust installed)
 
 ```bash
-git clone https://github.com/yksouthx/calm-shell.git
+git clone https://github.com/s0uth09/calm-shell.git
 cd calm-shell
 cargo build --release --locked
 sudo install -Dm0755 target/release/calm /usr/bin/calm
@@ -101,34 +101,51 @@ arrow) onto that palette. `calm theme set <name>` switches the active
 theme; `calm doctor` checks your terminal actually supports truecolor
 so the palette renders correctly.
 
+### Examples
+
+[`examples/`](examples/) has drop-in `.calm` files for every topic
+above (a fuller alias set, extra functions, more directory shortcuts, a
+bigger history, vi mode, the error bell) plus a complete second theme
+— copy whichever ones you want over the matching file in
+`~/.config/calm-shell/`. See [`examples/README.md`](examples/README.md)
+for specifics, including a note on what a custom theme needs to define
+to get full editor coloring, not just prompt coloring.
+
 ## Status
 
 **Working:** the CLI (`theme`, `plugin`, `config`, `doctor`), and the
 interactive shell — real line editing via reedline (fish-style history
-autosuggestions, syntax highlighting, Up/Down + Ctrl+R search),
-aliases, `[functions]` and installed plugins (sourced as a preamble
-before each command), a `cd`/`pushd`/`popd`/`dirs` builtin set plus
-`auto_cd` (bare directory names cd into themselves) and
-directory-change syncing for everything else (so `mkcd foo`, or a plain
-`mkdir x && cd x`, actually leaves you in the new directory),
-environment variables, the terminal title (`terminal.calm`'s
-`set_title`), an error bell (`bell`), and Ctrl+C that interrupts the
-running command without killing the shell. `calm_format.rs` (the
-config parser) has a unit test suite covering sections, scalars, lists,
-multiline blocks, includes, and error cases.
+autosuggestions, syntax highlighting, Up/Down history browsing, and Tab
+completion — commands at the first word, filesystem paths everywhere
+else, rendered through reedline's own themed columnar menu), fuzzy
+history search on Ctrl+R (fzf's convention — non-contiguous subsequence
+matching via the `fuzzy-matcher` crate, not reedline's built-in
+substring reverse-i-search), aliases,
+`[functions]` and installed plugins (sourced as a preamble before each
+command), a `cd`/`pushd`/`popd`/`dirs` builtin set plus `auto_cd` (bare
+directory names cd into themselves) and directory-change syncing for
+everything else (so `mkcd foo`, or a plain `mkdir x && cd x`, actually
+leaves you in the new directory), environment variables, the terminal
+title (`terminal.calm`'s `set_title`), an error bell (`bell`), and
+Ctrl+C that interrupts the running command without killing the shell.
+`calm_format.rs` (the config parser) has a unit test suite covering
+sections, scalars, lists, multiline blocks, includes, and error cases;
+the completer and `auto_cd`/directory-stack logic are covered too.
 
 **Known scope boundaries** (documented in code, not silently papered
 over): the highlighter is a tokenizer (command word / strings / flags),
-not a full shell grammar — no pipe/operator awareness. `export`ed
-variables from a function or plugin don't sync back the way directory
-changes now do. `history.calm`'s `ignore_dups`/`share_across_sessions`
-aren't wired yet (`size`/`save` both feed history capacity).
-`keyboard.calm`'s `[keyboard.bindings]` table documents bindings that
-happen to match reedline's emacs defaults but isn't actually
-remappable yet. `terminal.calm`'s `truecolor` flag isn't read (`calm
-doctor` checks `$COLORTERM` independently of it). No tab-completion —
-history-based autosuggestion exists, filename/command completion
-doesn't. History search is substring (Ctrl+R), not fuzzy. No job
+not a full shell grammar — no pipe/operator awareness, and completion
+inherits that same word-boundary-only view of the line (no flag-aware
+or per-command completion specs). `export`ed variables from a function
+or plugin don't sync back the way directory changes now do.
+`history.calm`'s `ignore_dups`/`share_across_sessions` aren't wired yet
+(`size`/`save` both feed history capacity). `keyboard.calm`'s
+`[keyboard.bindings]` table documents bindings that happen to match
+reedline's emacs defaults but isn't actually remappable yet.
+`terminal.calm`'s `truecolor` flag isn't read (`calm doctor` checks
+`$COLORTERM` independently of it). This session's own new commands
+don't show up in the fuzzy history menu until the next session (the
+menu reads the history file once at startup, not per-keystroke). No job
 control (`bg`/`fg`, `&`-backgrounding isn't tracked). Hyprland
 integration is currently detection-only in `calm doctor`.
 

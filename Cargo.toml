@@ -5,8 +5,8 @@ edition = "2021"
 description = "Calm-shell — a calm, pastel, Arch-native interactive shell for EndeavourOS"
 license = "MIT"
 authors = ["yksouthx"]
-repository = "https://github.com/yksouthx/calm-shell"
-homepage = "https://github.com/yksouthx/calm-shell"
+repository = "https://github.com/s0uth09/calm-shell"
+homepage = "https://github.com/s0uth09/calm-shell"
 readme = "README.md"
 keywords = ["shell", "cli", "arch-linux", "endeavouros", "repl"]
 categories = ["command-line-utilities"]
@@ -38,3 +38,8 @@ libc = "0.2"
 # `unicode-segmentation` (needed >=1.85, pinned to 1.11.0). See Cargo.lock.
 reedline = "=0.49.0"
 nu-ansi-term = "0.50"
+# Skim's fuzzy-matching algorithm as a standalone crate — used for Ctrl+R
+# history search (see line_editor.rs's FuzzyHistoryCompleter). Small,
+# well-established (skim, telescope-fzf-native, and others build on it),
+# no reason to hand-roll a fuzzy scorer when this is exactly what it does.
+fuzzy-matcher = "0.3"
