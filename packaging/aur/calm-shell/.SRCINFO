@@ -2,7 +2,7 @@ pkgbase = calm-shell
 	pkgdesc = A calm, pastel, Arch-native interactive shell for EndeavourOS
 	pkgver = 0.1.0
 	pkgrel = 1
-	url = https://github.com/s0uth09/calm-shell
+	url = https://github.com/yksouthx/calm-shell
 	arch = x86_64
 	arch = aarch64
 	license = MIT
@@ -10,7 +10,7 @@ pkgbase = calm-shell
 	depends = gcc-libs
 	provides = calm
 	conflicts = calm-shell-git
-	source = calm-shell-0.1.0.tar.gz::https://github.com/s0uth09/calm-shell/archive/refs/tags/v0.1.0.tar.gz
+	source = calm-shell-0.1.0.tar.gz::https://github.com/yksouthx/calm-shell/archive/refs/tags/v0.1.0.tar.gz
 	sha256sums = SKIP
 
 pkgname = calm-shell
