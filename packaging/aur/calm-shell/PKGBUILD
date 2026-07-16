@@ -18,7 +18,7 @@ optdepends=('git: prompt shows branch + clean/dirty status'
 makedepends=('cargo')
 provides=('calm')
 conflicts=('calm-shell-git')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/yksouthx/calm-shell/archive/refs/tags/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/yksouthx/calm-shell")
 sha256sums=('SKIP')
 
 prepare() {
