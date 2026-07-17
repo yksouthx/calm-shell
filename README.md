@@ -26,17 +26,18 @@ yay -S calm-shell        # latest tagged release
 yay -S calm-shell-git    # build from the latest master
 ```
 
-### Manual (any Linux with Rust installed)
+### Manual (any POSIX system with a C compiler)
 
 ```bash
 git clone https://github.com/s0uth09/calm-shell.git
 cd calm-shell
-cargo build --release --locked
-sudo install -Dm0755 target/release/calm /usr/bin/calm
+make
+sudo make install    # installs to /usr/local/bin by default; set PREFIX to change
 ```
 
-Requires Rust 1.75+ and a linker (`gcc`/`cc`). No other system
-dependencies.
+Requires a C11 compiler (`gcc`/`clang`) and `make`. No other build or
+runtime dependencies — calm-shell links only against the C standard
+library and POSIX system calls.
 
 ## Usage
 
@@ -61,10 +62,10 @@ oh-my-zsh layout (`environment.zsh`, `directory.zsh`, `history.zsh`, ...):
 ├── environment.calm   # exported env vars
 ├── directory.calm     # auto_cd, dir stack, cd shortcuts
 ├── history.calm       # history size/dedup/session sharing
-├── keyboard.calm       # edit mode, keybindings
-├── terminal.calm       # title, bell, truecolor
-├── aliases.calm         # command aliases
-├── functions.calm       # shell function bodies
+├── keyboard.calm      # edit mode, keybindings
+├── terminal.calm      # title, bell, truecolor
+├── aliases.calm       # command aliases
+├── functions.calm     # shell function bodies
 ├── themes/
 │   └── calm-lavender.json
 ├── plugins/
@@ -114,39 +115,47 @@ to get full editor coloring, not just prompt coloring.
 ## Status
 
 **Working:** the CLI (`theme`, `plugin`, `config`, `doctor`), and the
-interactive shell — real line editing via reedline (fish-style history
-autosuggestions, syntax highlighting, Up/Down history browsing, and Tab
-completion — commands at the first word, filesystem paths everywhere
-else, rendered through reedline's own themed columnar menu), fuzzy
-history search on Ctrl+R (fzf's convention — non-contiguous subsequence
-matching via the `fuzzy-matcher` crate, not reedline's built-in
-substring reverse-i-search), aliases,
-`[functions]` and installed plugins (sourced as a preamble before each
-command), a `cd`/`pushd`/`popd`/`dirs` builtin set plus `auto_cd` (bare
-directory names cd into themselves) and directory-change syncing for
-everything else (so `mkcd foo`, or a plain `mkdir x && cd x`, actually
-leaves you in the new directory), environment variables, the terminal
-title (`terminal.calm`'s `set_title`), an error bell (`bell`), and
-Ctrl+C that interrupts the running command without killing the shell.
-`calm_format.rs` (the config parser) has a unit test suite covering
+interactive shell — a raw-terminal line editor (single-pass syntax
+highlighting for the command word / quoted strings / flags, Up/Down
+history browsing, and Tab completion — commands at the first word,
+filesystem paths everywhere else), fuzzy history search on Ctrl+R
+(fzf's convention — a non-contiguous ordered-subsequence scorer, hand-
+rolled rather than pulled from a library), aliases, `[functions]` and
+installed plugins (sourced as a preamble before each command), a
+`cd`/`pushd`/`popd`/`dirs` builtin set plus `auto_cd` (bare directory
+names cd into themselves) and directory-change syncing for everything
+else (so `mkcd foo`, or a plain `mkdir x && cd x`, actually leaves you
+in the new directory), environment variables, the terminal title
+(`terminal.calm`'s `set_title`), an error bell (`bell`), and Ctrl+C
+that interrupts the running command without killing the shell.
+`calm_format.c` (the config parser) has a test suite covering
 sections, scalars, lists, multiline blocks, includes, and error cases;
-the completer and `auto_cd`/directory-stack logic are covered too.
+the JSON parser, theme loading, and a handful of `util.c` helpers are
+covered too (`make test`).
 
 **Known scope boundaries** (documented in code, not silently papered
 over): the highlighter is a tokenizer (command word / strings / flags),
 not a full shell grammar — no pipe/operator awareness, and completion
 inherits that same word-boundary-only view of the line (no flag-aware
-or per-command completion specs). `export`ed variables from a function
+or per-command completion specs). Multiple Tab matches print as a
+plain list rather than an interactive menu. Line editing operates at
+the byte level, not full Unicode grapheme-cluster granularity — fine
+for the ASCII-heavy commands a shell prompt actually sees, but a pasted
+multi-byte character's cursor math can be a little off. Vi mode
+(`keyboard.calm`'s `edit_mode = "vi"`) covers common movement/insert
+commands (`h`/`l`/`0`/`$`/`x`/`i`/`a`/Esc), not a full modal-editing
+vocabulary (no `dd`/`dw`/counts). `export`ed variables from a function
 or plugin don't sync back the way directory changes now do.
 `history.calm`'s `ignore_dups`/`share_across_sessions` aren't wired yet
-(`size`/`save` both feed history capacity). `keyboard.calm`'s
-`[keyboard.bindings]` table documents bindings that happen to match
-reedline's emacs defaults but isn't actually remappable yet.
+(`size`/`save` are read but history isn't capacity-trimmed in memory
+yet, only ever appended to on disk). `keyboard.calm`'s
+`[keyboard.bindings]` table documents bindings that happen to match the
+editor's emacs defaults but isn't actually remappable yet.
 `terminal.calm`'s `truecolor` flag isn't read (`calm doctor` checks
 `$COLORTERM` independently of it). This session's own new commands
 don't show up in the fuzzy history menu until the next session (the
-menu reads the history file once at startup, not per-keystroke). No job
-control (`bg`/`fg`, `&`-backgrounding isn't tracked). Hyprland
+menu reads the history file once at startup, not per-keystroke). No
+job control (`bg`/`fg`, `&`-backgrounding isn't tracked). Hyprland
 integration is currently detection-only in `calm doctor`.
 
 ## License

@@ -13,8 +13,8 @@ the AUR repos when publishing.
 
 ## Cutting a release (for the `calm-shell` package)
 
-1. Bump `version` in `Cargo.toml`.
-2. `cargo build --release --locked` and commit the updated `Cargo.lock`.
+1. Bump `CALM_SHELL_VERSION` in `src/version.h`.
+2. `make clean && make && make test` to confirm a clean build and green tests.
 3. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`
 4. In `packaging/aur/calm-shell/PKGBUILD`, bump `pkgver` (and reset
    `pkgrel=1`), then regenerate the checksum:
