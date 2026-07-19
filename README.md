@@ -1,86 +1,84 @@
 # Calm-shell
 
-> Fish's simplicity + Zsh's power + HyDE's beauty + Arch's flexibility.
-
-A calm, pastel, Arch-native interactive shell for EndeavourOS. Minimal
-distraction, fast workflow, friendly for beginners and powerful for
-advanced Linux users.
+A calm, pastel, interactive shell for Linux. Minimal distraction, fast
+workflow, friendly for beginners and powerful for advanced users.
 
 ```
-╭─ user@endeavouros
+╭─ user@host
 │  🌙 Calm-shell
 │  ~/Projects/Calm-shell
 │  git:main ✓
 ╰─ ❯
 ```
 
+Written in C, built with CMake. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+for why (short version: C for everything that touches the terminal, a process,
+or a config file; CMake because it's a proper build system, not a second
+programming language).
+
 ## Installation
-
-### AUR (recommended, on Arch/EndeavourOS)
-
-Using an AUR helper such as `yay` or `paru`:
-
-```bash
-yay -S calm-shell        # latest tagged release
-# or
-yay -S calm-shell-git    # build from the latest master
-```
-
-### Manual (any POSIX system with a C compiler)
 
 ```bash
 git clone https://github.com/s0uth09/calm-shell.git
 cd calm-shell
-make
-sudo make install    # installs to /usr/local/bin by default; set PREFIX to change
+cmake -S . -B build
+cmake --build build
+sudo cmake --install build   # installs to /usr/local/bin by default;
+                              # pass -DCMAKE_INSTALL_PREFIX=... to change it
 ```
 
-Requires a C11 compiler (`gcc`/`clang`) and `make`. No other build or
-runtime dependencies — calm-shell links only against the C standard
-library and POSIX system calls.
+Requires a C11 compiler (`gcc`/`clang`) and CMake >= 3.16. No other build or
+runtime dependencies -- calm-shell links only against the C standard library
+and POSIX system calls, and shells out to `/bin/sh`, `git`, and `$EDITOR` at
+runtime for the handful of things those already do well (see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)).
+
+Run the test suite with `ctest --test-dir build` (or `cmake --build build
+--target test`), and turn on `-DCALM_WERROR=ON` at configure time to build
+with warnings-as-errors, the same as CI does.
 
 ## Usage
 
 ```
-calm                          Open Calm-shell
-calm theme list               List installed themes
-calm theme set calm-lavender  Switch the active theme
-calm plugin install <name>    Scaffold a new plugin
-calm config                   Open config.calm in $EDITOR
-calm doctor                   Diagnose system compatibility
+calm                          open Calm-shell
+calm theme list                list installed themes
+calm theme set calm-lavender   switch the active theme
+calm plugin install <src>      install a plugin (local dir or git URL)
+calm plugin list               list installed plugins
+calm config edit                open config.calm in $EDITOR
+calm config path                 print the config directory path
+calm config check                 validate config.calm
+calm doctor                        diagnose environment issues
 ```
 
 ## Configuration
 
-Everything lives under `~/.config/calm-shell/`, split into small topic
-files rather than one growing config — the same shape as the classic
-oh-my-zsh layout (`environment.zsh`, `directory.zsh`, `history.zsh`, ...):
+Everything lives under `~/.config/calm-shell/`, split into small topic files
+rather than one growing config:
 
 ```
 ~/.config/calm-shell/
 ├── config.calm        # entry point, includes everything below
 ├── environment.calm   # exported env vars
 ├── directory.calm     # auto_cd, dir stack, cd shortcuts
-├── history.calm       # history size/dedup/session sharing
+├── history.calm       # history size, dedup
 ├── keyboard.calm      # edit mode, keybindings
 ├── terminal.calm      # title, bell, truecolor
 ├── aliases.calm       # command aliases
 ├── functions.calm     # shell function bodies
 ├── themes/
-│   └── calm-lavender.json
-├── plugins/
-└── history/
+│   └── calm-lavender.calm
+└── plugins/
 ```
 
-### The `.calm` format
+Every one of those is `.calm` -- one format, one native parser
+(`src/config/calmconf.c`), shared by shell config, themes, and plugin
+manifests alike. Full syntax guide: [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md).
 
 ```calm
-# comments start with #
-[section]
-key = "string value"
-flag = true
-count = 3
-tags = ["fast", "quiet"]
+[shell]
+theme = "calm-lavender"
+greeting = true
 
 [functions]
 mkcd = """
@@ -90,74 +88,54 @@ mkdir -p "$1" && cd "$1"
 include "aliases.calm"
 ```
 
-Sections group related keys, values are typed (string / bool / int /
-list), triple-quoted blocks hold multi-line shell bodies, and `include`
-pulls in another `.calm` file relative to the current one.
-
-### Themes
-
-A theme is a JSON file in `themes/` defining the pastel palette and how
-the prompt maps semantic roles (border, path, git-clean, git-dirty,
-arrow) onto that palette. `calm theme set <name>` switches the active
-theme; `calm doctor` checks your terminal actually supports truecolor
-so the palette renders correctly.
-
 ### Examples
 
-[`examples/`](examples/) has drop-in `.calm` files for every topic
-above (a fuller alias set, extra functions, more directory shortcuts, a
-bigger history, vi mode, the error bell) plus a complete second theme
-— copy whichever ones you want over the matching file in
-`~/.config/calm-shell/`. See [`examples/README.md`](examples/README.md)
-for specifics, including a note on what a custom theme needs to define
-to get full editor coloring, not just prompt coloring.
+[`examples/`](examples/) has drop-in `.calm` files -- a fuller alias set,
+a couple of extra functions, and a complete second theme (`calm-mint`) --
+copy whichever ones you want over the matching file in
+`~/.config/calm-shell/`. See [`examples/README.md`](examples/README.md).
 
 ## Status
 
 **Working:** the CLI (`theme`, `plugin`, `config`, `doctor`), and the
-interactive shell — a raw-terminal line editor (single-pass syntax
-highlighting for the command word / quoted strings / flags, Up/Down
-history browsing, and Tab completion — commands at the first word,
-filesystem paths everywhere else), fuzzy history search on Ctrl+R
-(fzf's convention — a non-contiguous ordered-subsequence scorer, hand-
-rolled rather than pulled from a library), aliases, `[functions]` and
-installed plugins (sourced as a preamble before each command), a
-`cd`/`pushd`/`popd`/`dirs` builtin set plus `auto_cd` (bare directory
-names cd into themselves) and directory-change syncing for everything
-else (so `mkcd foo`, or a plain `mkdir x && cd x`, actually leaves you
-in the new directory), environment variables, the terminal title
-(`terminal.calm`'s `set_title`), an error bell (`bell`), and Ctrl+C
-that interrupts the running command without killing the shell.
-`calm_format.c` (the config parser) has a test suite covering
-sections, scalars, lists, multiline blocks, includes, and error cases;
-the JSON parser, theme loading, and a handful of `util.c` helpers are
-covered too (`make test`).
+interactive shell -- a raw-terminal line editor (single-pass syntax
+highlighting for the command word / quoted strings / flags, Up/Down history
+browsing, and Tab completion -- commands at the first word, filesystem paths
+everywhere else, with directory matches getting a trailing `/`), fuzzy
+history search on Ctrl+R (fzf's convention -- a non-contiguous
+ordered-subsequence scorer), aliases, `[functions]` and installed plugins
+(sourced as a preamble before each command), a `cd`/`pushd`/`popd`/`dirs`
+builtin set plus `auto_cd` (bare directory names cd into themselves) and
+directory-change syncing for everything else (so `mkcd foo`, or a plain
+`mkdir x && cd x`, actually leaves you in the new directory, via a
+non-blocking pipe read that can't hang on a backgrounded job), environment
+variables, the terminal title, an error bell that rings for calm-shell's own
+mistakes (not a command's ordinary nonzero exit), history capped and
+deduplicated per `history.calm`'s `size`/`ignore_dups`, `terminal.calm`'s
+`truecolor` flag (plus automatic `$NO_COLOR` support), and Ctrl+C that
+interrupts the running command without killing the shell. The test suite
+(`ctest`) covers the `.calm` parser (sections, scalars, lists, multiline
+blocks, comments, includes and include cycles, error cases), theme loading,
+alias expansion, the directory stack, history (dedup, capacity trimming,
+disk round-trip, fuzzy search), the edit buffer, and command-routing logic.
 
-**Known scope boundaries** (documented in code, not silently papered
-over): the highlighter is a tokenizer (command word / strings / flags),
-not a full shell grammar — no pipe/operator awareness, and completion
-inherits that same word-boundary-only view of the line (no flag-aware
-or per-command completion specs). Multiple Tab matches print as a
-plain list rather than an interactive menu. Line editing operates at
-the byte level, not full Unicode grapheme-cluster granularity — fine
-for the ASCII-heavy commands a shell prompt actually sees, but a pasted
-multi-byte character's cursor math can be a little off. Vi mode
-(`keyboard.calm`'s `edit_mode = "vi"`) covers common movement/insert
-commands (`h`/`l`/`0`/`$`/`x`/`i`/`a`/Esc), not a full modal-editing
-vocabulary (no `dd`/`dw`/counts). `export`ed variables from a function
-or plugin don't sync back the way directory changes now do.
-`history.calm`'s `ignore_dups`/`share_across_sessions` aren't wired yet
-(`size`/`save` are read but history isn't capacity-trimmed in memory
-yet, only ever appended to on disk). `keyboard.calm`'s
-`[keyboard.bindings]` table documents bindings that happen to match the
-editor's emacs defaults but isn't actually remappable yet.
-`terminal.calm`'s `truecolor` flag isn't read (`calm doctor` checks
-`$COLORTERM` independently of it). This session's own new commands
-don't show up in the fuzzy history menu until the next session (the
-menu reads the history file once at startup, not per-keystroke). No
-job control (`bg`/`fg`, `&`-backgrounding isn't tracked). Hyprland
-integration is currently detection-only in `calm doctor`.
+**Known scope boundaries** (documented in code, not silently papered over):
+the highlighter is a tokenizer (command word / strings / flags), not a full
+shell grammar -- no pipe/operator awareness, and completion inherits that
+same word-boundary-only view of the line (no flag-aware or per-command
+completion specs). Multiple Tab matches print as a plain list rather than an
+interactive menu. Line editing operates at the byte level, not full Unicode
+grapheme-cluster granularity. Vi mode (`keyboard.calm`'s `edit_mode =
+"vi"`) covers common movement/insert commands (`h`/`l`/`0`/`$`/`x`/`i`/`a`/
+Esc), not a full modal-editing vocabulary. `export`ed variables from a
+function or plugin don't sync back the way directory changes do.
+`history.calm`'s `share_across_sessions` isn't wired (history is per-process).
+`keyboard.calm`'s `[keyboard.bindings]` table documents bindings that happen
+to match the editor's emacs defaults but isn't actually remappable yet. This
+session's own new commands don't show up in the fuzzy history menu until the
+next session (history is read once at startup). No job control (`bg`/`fg`;
+`&`-backgrounding runs but isn't tracked).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT -- see [LICENSE](LICENSE).

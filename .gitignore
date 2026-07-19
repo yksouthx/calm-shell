@@ -1,5 +1,3 @@
-/build
-/calm
-/tests/run_tests
+/build/
 *.o
 *.d

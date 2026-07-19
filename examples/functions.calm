@@ -1,34 +1,30 @@
-# Example functions.calm — triple-quoted blocks hold raw shell bodies,
-# same as the default file's `mkcd`. Copy over
-# ~/.config/calm-shell/functions.calm, or add individual entries under
-# your own [functions] section. Each becomes `name() { ...body... }` in
-# the shell, so $1/$2/$@ work exactly like in any shell function.
+# A couple of small shell functions, in the same triple-quoted-block shape
+# as the bundled `mkcd` -- copy what you like into
+# ~/.config/calm-shell/functions.calm.
 
 [functions]
-# Make a directory and cd into it in one step: `mkcd new-project`
-mkcd = """
-mkdir -p "$1" && cd "$1"
-"""
 
-# Commit with a message in one step: `gcm "fix: thing"`
-gcm = """
-git commit -m "$1"
-"""
-
-# Quick backup of a file: `backup notes.txt` -> notes.txt.bak
-backup = """
-cp -- "$1" "$1.bak"
-"""
-
-# Extract almost any archive without remembering the right flags:
-# `extract project.tar.gz`
+# Extracts almost any common archive format based on its extension.
 extract = """
+if [ -z "$1" ]; then
+    echo "usage: extract <file>"
+    return 1
+fi
 case "$1" in
-  *.tar.gz|*.tgz) tar xzf "$1" ;;
-  *.tar.bz2) tar xjf "$1" ;;
-  *.tar) tar xf "$1" ;;
-  *.zip) unzip "$1" ;;
-  *.gz) gunzip "$1" ;;
-  *) echo "extract: don't know how to extract $1" ;;
+    *.tar.gz|*.tgz) tar xzf "$1" ;;
+    *.tar.bz2) tar xjf "$1" ;;
+    *.tar) tar xf "$1" ;;
+    *.zip) unzip "$1" ;;
+    *.gz) gunzip "$1" ;;
+    *) echo "extract: don't know how to extract '$1'" ;;
 esac
+"""
+
+# Backs up a file or directory alongside itself, timestamped.
+backup = """
+if [ -z "$1" ]; then
+    echo "usage: backup <path>"
+    return 1
+fi
+cp -r "$1" "$1.bak.$(date +%Y%m%d%H%M%S)"
 """

@@ -1,0 +1,22 @@
+# Calm Mint -- a cooler, greener companion to the bundled Calm Lavender.
+# Copy into ~/.config/calm-shell/themes/calm-mint.calm, then:
+#   calm theme set calm-mint
+
+name = "calm-mint"
+display_name = "Calm Mint"
+
+[colors]
+mint_green  = "#A6E3A1"
+soft_teal   = "#94E2D5"
+sky_blue    = "#89DCEB"
+pale_yellow = "#F9E2AF"
+coral       = "#F38BA8"
+fog_gray    = "#C6D0F5"
+
+[prompt]
+icon             = "🌿"
+border_color     = "fog_gray"
+path_color       = "sky_blue"
+git_clean_color  = "mint_green"
+git_dirty_color  = "coral"
+arrow_color      = "soft_teal"
