@@ -26,12 +26,18 @@ add_library(calm_core STATIC
     src/util/strlist.c
     src/util/fsutil.c
     src/config/calmconf.c
+    src/config/calm_serialize.c
     src/config/paths.c
     src/config/scaffold.c
+    src/config/profile.c
+    src/config/repair.c
+    src/config/plugin_loader.c
+    src/config/official_plugins.c
     src/theme/theme.c
     src/theme/appearance.c
     src/theme/color_scheme.c
     src/theme/fastfetch_sync.c
+    src/theme/app_sync.c
     src/theme/sync.c
     src/term/emulator.c
     src/term/emulator_sync.c
@@ -55,6 +61,8 @@ add_library(calm_core STATIC
     src/cli/commands/theme_cmd.c
     src/cli/commands/sync_cmd.c
     src/cli/commands/plugin_cmd.c
+    src/cli/commands/profile_cmd.c
+    src/cli/commands/repair_cmd.c
     src/cli/commands/config_cmd.c
     src/cli/commands/doctor_cmd.c
 )

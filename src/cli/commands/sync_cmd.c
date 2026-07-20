@@ -56,8 +56,20 @@ int sync_cmd_run(void) {
         printf("Fastfetch sync disabled ([sync] sync_fastfetch = false)\n");
     }
 
+    bool apps_all_ok = true;
+    if (result.apps_enabled) {
+        for (size_t i = 0; i < result.apps.count; i++) {
+            printf("%s\n", result.apps.items[i].detail ? result.apps.items[i].detail : result.apps.items[i].app);
+            if (!result.apps.items[i].synced) {
+                apps_all_ok = false;
+            }
+        }
+    } else {
+        printf("App sync disabled ([sync] sync_apps = false)\n");
+    }
+
     bool all_ok = (!result.terminal_enabled || result.terminal_synced) &&
-                  (!result.fastfetch_enabled || result.fastfetch_synced);
+                  (!result.fastfetch_enabled || result.fastfetch_synced) && (!result.apps_enabled || apps_all_ok);
 
     theme_sync_result_free(&result);
     theme_free(&theme);

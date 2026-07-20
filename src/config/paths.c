@@ -34,6 +34,9 @@ char *plugins_dir(void) {
 char *history_dir(void) {
     return config_dir_join("history");
 }
+char *profiles_dir(void) {
+    return config_dir_join("profiles");
+}
 char *config_file(void) {
     return config_dir_join("config.calm");
 }
@@ -60,4 +63,19 @@ char *terminal_file(void) {
 }
 char *active_theme_marker_file(void) {
     return config_dir_join(".active_theme");
+}
+char *profile_active_file(void) {
+    return config_dir_join("profile_active.calm");
+}
+char *active_profile_marker_file(void) {
+    return config_dir_join(".active_profile");
+}
+char *backups_dir(void) {
+    return config_dir_join(".backups");
+}
+char *plugins_state_file(void) {
+    return config_dir_join("plugins.calm");
+}
+char *plugins_active_file(void) {
+    return config_dir_join("plugins_active.calm");
 }

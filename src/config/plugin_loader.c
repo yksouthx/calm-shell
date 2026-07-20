@@ -1,0 +1,220 @@
+#include "config/plugin_loader.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "config/calm_serialize.h"
+#include "config/calmconf.h"
+#include "config/paths.h"
+#include "config/scaffold.h"
+#include "util/fsutil.h"
+#include "util/strbuf.h"
+#include "util/xalloc.h"
+
+StrList plugin_loader_enabled_names(void) {
+    StrList out;
+    strlist_init(&out);
+
+    char *path = plugins_state_file();
+    if (!path || !path_is_file(path)) {
+        free(path);
+        return out;
+    }
+    CalmDocument doc;
+    char *err = NULL;
+    if (!calm_parse_file(path, &doc, &err)) {
+        free(err);
+        free(path);
+        return out;
+    }
+    free(path);
+
+    const CalmValue *enabled = calm_document_get(&doc, "", "enabled");
+    if (enabled && enabled->type == CALM_LIST) {
+        for (size_t i = 0; i < enabled->as.list.count; i++) {
+            if (enabled->as.list.items[i].type == CALM_STRING) {
+                strlist_add(&out, enabled->as.list.items[i].as.string);
+            }
+        }
+    }
+    calm_document_free(&doc);
+    return out;
+}
+
+bool plugin_loader_is_enabled(const char *name) {
+    StrList names = plugin_loader_enabled_names();
+    bool found = strlist_contains(&names, name);
+    strlist_free(&names);
+    return found;
+}
+
+bool plugin_loader_set_enabled(const StrList *names) {
+    char *path = plugins_state_file();
+    if (!path) {
+        return false;
+    }
+
+    StrBuf sb;
+    strbuf_init(&sb);
+    strbuf_append(&sb, "# Which installed plugins (~/.config/calm-shell/plugins/<name>/) are\n"
+                        "# currently active. Managed by `calm plugin enable`/`disable` --\n"
+                        "# editing this list by hand works too, but won't take effect until\n"
+                        "# the next `calm plugin enable`/`disable` or shell session (or run\n"
+                        "# `calm repair` to refresh plugins_active.calm immediately).\n"
+                        "enabled = [");
+    StrList deduped;
+    strlist_init(&deduped);
+    for (size_t i = 0; i < names->count; i++) {
+        if (!strlist_contains(&deduped, names->items[i])) {
+            strlist_add(&deduped, names->items[i]);
+        }
+    }
+    for (size_t i = 0; i < deduped.count; i++) {
+        if (i > 0) {
+            strbuf_append(&sb, ", ");
+        }
+        strbuf_append_char(&sb, '"');
+        for (const char *p = deduped.items[i]; *p; p++) {
+            if (*p == '"' || *p == '\\') {
+                strbuf_append_char(&sb, '\\');
+            }
+            strbuf_append_char(&sb, *p);
+        }
+        strbuf_append_char(&sb, '"');
+    }
+    strlist_free(&deduped);
+    strbuf_append(&sb, "]\n");
+
+    char *content = strbuf_take(&sb);
+    bool ok = overwrite_file(path, content);
+    free(content);
+    free(path);
+    return ok;
+}
+
+static bool plugin_is_installed(const char *name) {
+    char *plugins = plugins_dir();
+    if (!plugins) {
+        return false;
+    }
+    char *plugin_dir = join_path(plugins, name);
+    char *manifest = join_path(plugin_dir, "plugin.calm");
+    bool ok = path_is_file(manifest);
+    free(manifest);
+    free(plugin_dir);
+    free(plugins);
+    return ok;
+}
+
+bool plugin_loader_enable(const char *name) {
+    if (!plugin_is_installed(name)) {
+        return false;
+    }
+    StrList names = plugin_loader_enabled_names();
+    if (!strlist_contains(&names, name)) {
+        strlist_add(&names, name);
+    }
+    bool ok = plugin_loader_set_enabled(&names);
+    strlist_free(&names);
+    if (!ok) {
+        return false;
+    }
+    return plugin_loader_sync(NULL);
+}
+
+bool plugin_loader_disable(const char *name) {
+    StrList names = plugin_loader_enabled_names();
+    StrList kept;
+    strlist_init(&kept);
+    for (size_t i = 0; i < names.count; i++) {
+        if (strcmp(names.items[i], name) != 0) {
+            strlist_add(&kept, names.items[i]);
+        }
+    }
+    strlist_free(&names);
+    bool ok = plugin_loader_set_enabled(&kept);
+    strlist_free(&kept);
+    if (!ok) {
+        return false;
+    }
+    return plugin_loader_sync(NULL);
+}
+
+/* The three plugin-contributed section kinds a manifest may define --
+ * the same set profile.c's PASSTHROUGH_SECTIONS treats as "shell
+ * behavior", just narrower: a plugin isn't a profile, so it doesn't
+ * get to touch [shell]/[prompt]/[terminal]/etc, only the parts of a
+ * session a bundle of aliases plausibly should: what commands exist,
+ * what environment they need, what functions back them. */
+static const char *const PLUGIN_SECTIONS[] = {"environment", "aliases", "functions"};
+#define PLUGIN_SECTION_COUNT (sizeof(PLUGIN_SECTIONS) / sizeof(PLUGIN_SECTIONS[0]))
+
+bool plugin_loader_sync(char **warnings) {
+    if (warnings) {
+        *warnings = NULL;
+    }
+    if (!ensure_scaffold()) {
+        return false;
+    }
+
+    StrList enabled = plugin_loader_enabled_names();
+    char *plugins = plugins_dir();
+
+    StrBuf sb;
+    strbuf_init(&sb);
+    strbuf_append(&sb, "# Generated by the calm-shell plugin loader -- do not edit by hand,\n"
+                        "# your changes will be overwritten the next time a plugin is\n"
+                        "# (de)activated or a new shell session starts.\n");
+
+    StrBuf skipped;
+    strbuf_init(&skipped);
+
+    for (size_t i = 0; i < enabled.count && plugins; i++) {
+        const char *name = enabled.items[i];
+        char *plugin_dir = join_path(plugins, name);
+        char *manifest_path = join_path(plugin_dir, "plugin.calm");
+
+        CalmDocument manifest;
+        char *err = NULL;
+        if (!calm_parse_file(manifest_path, &manifest, &err)) {
+            char *line = xsprintf("  plugin `%s` skipped: %s\n", name,
+                                    path_is_file(manifest_path) ? (err ? err : "manifest parse error")
+                                                                 : "not installed (plugin.calm missing)");
+            strbuf_append(&skipped, line);
+            free(line);
+            free(err);
+            free(manifest_path);
+            free(plugin_dir);
+            continue;
+        }
+        free(err);
+
+        char *header = xsprintf("\n# -- %s --\n", name);
+        strbuf_append(&sb, header);
+        free(header);
+        for (size_t s = 0; s < PLUGIN_SECTION_COUNT; s++) {
+            calm_serialize_section(&sb, &manifest, PLUGIN_SECTIONS[s]);
+        }
+
+        calm_document_free(&manifest);
+        free(manifest_path);
+        free(plugin_dir);
+    }
+    free(plugins);
+    strlist_free(&enabled);
+
+    char *content = strbuf_take(&sb);
+    char *active_path = plugins_active_file();
+    bool wrote = active_path && overwrite_file(active_path, content);
+    free(active_path);
+    free(content);
+
+    char *skipped_str = strbuf_take(&skipped);
+    if (skipped_str[0] != '\0' && warnings) {
+        *warnings = skipped_str;
+    } else {
+        free(skipped_str);
+    }
+
+    return wrote;
+}

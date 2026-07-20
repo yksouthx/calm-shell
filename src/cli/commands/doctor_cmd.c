@@ -4,10 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "config/calmconf.h"
 #include "config/paths.h"
+#include "config/repair.h"
 #include "exec/process.h"
-#include "theme/theme.h"
 #include "util/fsutil.h"
 
 static int g_problems = 0;
@@ -29,32 +28,21 @@ int doctor_cmd_run(void) {
     check(home != NULL, "$HOME is set", "cd/auto_cd/theme lookups need $HOME to resolve ~");
     free(home);
 
-    char *dir = config_dir();
-    bool dir_ok = dir && path_is_dir(dir);
-    check(dir_ok, "config directory exists", "run `calm` once to create it, or `calm config path` to see where");
-
-    char *cfg_path = config_file();
-    if (cfg_path && path_is_file(cfg_path)) {
-        CalmDocument doc;
-        char *err = NULL;
-        bool parses = calm_parse_file(cfg_path, &doc, &err);
-        check(parses, "config.calm parses", err);
-        if (parses) {
-            calm_document_free(&doc);
-        }
-        free(err);
+    /* Everything about config files, themes, plugins, permissions,
+     * and terminal/Fastfetch sync is the same scan `calm repair` runs
+     * -- just without apply_fixes, so nothing here is ever written.
+     * A REPAIR_FIXED status can't appear in scan mode. */
+    RepairReport report;
+    bool scanned = repair_scan(false, &report);
+    if (!scanned) {
+        check(false, "config directory exists",
+              "run `calm` once to create it, or `calm config path` to see where");
     } else {
-        check(false, "config.calm parses", "file doesn't exist yet");
+        for (size_t i = 0; i < report.count; i++) {
+            check(report.items[i].status == REPAIR_OK, report.items[i].label, report.items[i].detail);
+        }
     }
-    free(cfg_path);
-    free(dir);
-
-    Theme theme;
-    bool theme_ok = theme_load_active(&theme);
-    check(theme_ok, "active theme loads", "falls back to calm-lavender if this is unset or broken");
-    if (theme_ok) {
-        theme_free(&theme);
-    }
+    repair_report_free(&report);
 
     check(process_command_exists("/bin/sh"), "/bin/sh is available", "external commands can't run without it");
     check(process_command_exists("git"), "git is available", "the prompt's git status segment will just stay hidden");
@@ -71,7 +59,8 @@ int doctor_cmd_run(void) {
     if (g_problems == 0) {
         printf("Everything looks good.\n");
     } else {
-        printf("%d item%s could use attention.\n", g_problems, g_problems == 1 ? "" : "s");
+        printf("%d item%s could use attention. Run `calm repair` to fix what it safely can.\n", g_problems,
+               g_problems == 1 ? "" : "s");
     }
     return g_problems == 0 ? 0 : 1;
 }

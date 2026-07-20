@@ -153,7 +153,7 @@ static void apply_completion(EditBuf *buf, size_t word_start, const char *replac
     free(tail);
 }
 
-static void handle_tab(const StrList *known, EditBuf *buf) {
+static void handle_tab(const Theme *theme, const StrList *known, EditBuf *buf) {
     size_t word_start = buf->cursor;
     while (word_start > 0 && !isspace((unsigned char)buf->data[word_start - 1])) {
         word_start--;
@@ -173,9 +173,24 @@ static void handle_tab(const StrList *known, EditBuf *buf) {
     if (matches.count == 1) {
         apply_completion(buf, word_start, matches.items[0]);
     } else if (matches.count > 1) {
+        /* Same color choices highlight_line() uses for the equivalent
+         * word kind, so what lights up in the menu matches what it'll
+         * light up as once accepted: directories (trailing '/') get
+         * the flag color, commands get the known/unknown-command
+         * split, plain filenames pass through unstyled. */
         fputs("\r\n", stdout);
         for (size_t i = 0; i < matches.count; i++) {
-            printf("%s  ", matches.items[i]);
+            const char *entry = matches.items[i];
+            char *painted;
+            if (is_first_word && strchr(word, '/') == NULL) {
+                painted = theme_paint(theme, "git_clean", entry);
+            } else if (ends_with(entry, "/")) {
+                painted = theme_paint(theme, "soft_blue", entry);
+            } else {
+                painted = xstrdup(entry);
+            }
+            printf("%s  ", painted);
+            free(painted);
         }
         fputs("\r\n", stdout);
     }
@@ -303,7 +318,7 @@ LineSignal line_editor_read_line(const Theme *theme, const StrList *known, Histo
                 }
                 break;
             case 9 /* Tab */:
-                handle_tab(known, &buf);
+                handle_tab(theme, known, &buf);
                 break;
             case 18 /* Ctrl+R */:
                 fuzzy_history_search(hist, &buf);

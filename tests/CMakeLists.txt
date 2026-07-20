@@ -4,6 +4,9 @@ add_executable(calm_tests
     test_strbuf.c
     test_calmconf.c
     test_theme.c
+    test_profile.c
+    test_repair.c
+    test_app_sync.c
     test_color_scheme.c
     test_emulator.c
     test_alias_table.c

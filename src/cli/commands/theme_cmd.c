@@ -113,6 +113,17 @@ static int theme_set(const char *name) {
             if (result.fastfetch_enabled) {
                 printf("fastfetch: %s\n", result.fastfetch_synced ? "config synced" : "failed to sync");
             }
+            if (result.apps_enabled) {
+                int synced_count = 0;
+                for (size_t i = 0; i < result.apps.count; i++) {
+                    if (result.apps.items[i].synced) {
+                        synced_count++;
+                    }
+                }
+                printf("apps: %d/%zu synced (cava, btop, yazi, neovim, helix, hyprland, waybar, wofi, fuzzel -- "
+                       "see `calm sync` for per-app detail)\n",
+                       synced_count, result.apps.count);
+            }
             theme_sync_result_free(&result);
             theme_free(&active);
         }

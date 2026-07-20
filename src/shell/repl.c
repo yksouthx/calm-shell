@@ -7,6 +7,7 @@
 
 #include "config/calmconf.h"
 #include "config/paths.h"
+#include "config/plugin_loader.h"
 #include "config/scaffold.h"
 #include "exec/process.h"
 #include "shell/alias_table.h"
@@ -64,6 +65,20 @@ int repl_run(void) {
     if (!ensure_scaffold()) {
         fprintf(stderr, "calm: could not create ~/.config/calm-shell -- check permissions\n");
         return 1;
+    }
+
+    /* Must happen before config.calm is parsed below: config.calm
+     * includes the generated plugins_active.calm, so a plugin
+     * enabled/disabled by hand-editing plugins.calm, or a plugin
+     * directory removed with `rm -rf` since the last sync, needs to
+     * be resolved before that include is read, not after. Cheap --
+     * just the enabled plugins' small manifests, not a subprocess
+     * spawn or anything that could meaningfully slow startup. */
+    char *plugin_warnings = NULL;
+    plugin_loader_sync(&plugin_warnings);
+    if (plugin_warnings) {
+        fputs(plugin_warnings, stderr);
+        free(plugin_warnings);
     }
 
     char *cfg_path = config_file();

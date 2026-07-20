@@ -4,6 +4,7 @@
 
 #include "term/emulator.h"
 #include "term/emulator_sync.h"
+#include "theme/app_sync.h"
 #include "theme/appearance.h"
 #include "theme/fastfetch_sync.h"
 
@@ -12,6 +13,7 @@ void theme_sync_result_free(ThemeSyncResult *r) {
     free(r->fastfetch_path);
     r->terminal_detail = NULL;
     r->fastfetch_path = NULL;
+    app_sync_result_free(&r->apps);
 }
 
 void theme_sync_apply(const Theme *theme, const CalmDocument *cfg, ThemeSyncResult *out) {
@@ -21,6 +23,9 @@ void theme_sync_apply(const Theme *theme, const CalmDocument *cfg, ThemeSyncResu
     out->fastfetch_enabled = calm_document_get_bool(cfg, "sync", "sync_fastfetch", true);
     out->fastfetch_synced = false;
     out->fastfetch_path = NULL;
+    out->apps_enabled = calm_document_get_bool(cfg, "sync", "sync_apps", true);
+    out->apps.items = NULL;
+    out->apps.count = 0;
 
     if (out->terminal_enabled) {
         TermAppearance appearance;
@@ -35,5 +40,9 @@ void theme_sync_apply(const Theme *theme, const CalmDocument *cfg, ThemeSyncResu
 
     if (out->fastfetch_enabled) {
         out->fastfetch_synced = fastfetch_sync_write(theme, &out->fastfetch_path);
+    }
+
+    if (out->apps_enabled) {
+        app_sync_write_all(theme, &out->apps);
     }
 }
